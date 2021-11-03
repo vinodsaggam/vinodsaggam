@@ -1,0 +1,54 @@
+---
+resource_types:
+  - name: teams-notification
+    type: docker-image
+    source:
+      repository: navicore/teams-notification-resource
+      tag: latest
+
+resources:
+  - name: notify
+    type: teams-notification
+    source:
+      url: https://comcastcorp.webhook.office.com/webhookb2/10039f9f-5713-42cb-89de-813f1d9e04e4@906aefe9-76a7-4f65-b82d-5ec20775d5aa/IncomingWebhook/1254c9d97ffc44298b86973e4e50ff2f/cda2c0b2-c756-4a48-83c5-412b33c3288e
+  - name: tutorial
+    type: git
+    source:
+      uri: https://github.com/vinodsaggam/vinodsaggam.git
+      branch: main
+
+jobs:
+  - name: test
+    public: true
+    serial: true
+    plan:
+      - get: tutorial
+        trigger: true
+      - task: test-sometimes-works
+        config:
+          platform: linux
+          image_resource:
+            type: docker-image
+            source: {repository: busybox}
+          inputs:
+            - name: tutorial
+          outputs:
+            - name: notify_message
+          run:
+            path: test-sometimes-works-notify-message.sh
+        on_success:
+          put: notify
+          params:
+            color: 00EA2F
+            text_file: notify_message/message
+            title: $BUILD_PIPELINE_NAME
+            actionName: Details
+            actionTarget: $ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME
+        on_failure:
+          put: notify
+          params:
+            color: EA4300
+            text_file: notify_message/message
+            title: $BUILD_PIPELINE_NAME
+            actionName: Details
+            actionTarget: $ATC_EXTERNAL_URL/teams/$BUILD_TEAM_NAME/pipelines/$BUILD_PIPELINE_NAME/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME 
